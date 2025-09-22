@@ -1,0 +1,24 @@
+# PDF OCR with Google Gemini requirements
+
+# PDF processing
+PyMuPDF==1.26.4
+
+# Image processing
+Pillow==11.3.0
+
+# Google Gemini API
+google-genai==1.38.0
+
+# Environment variables
+python-dotenv==1.1.1
+
+# Standard libraries used (included with Python):
+# - os
+# - sys  
+# - json
+# - time
+# - signal
+# - io
+# - base64
+# - pathlib
+# - datetime
