@@ -24,7 +24,8 @@ load_dotenv()
 # Configuration
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 GEMINI_MODEL = "gemini-2.5-pro"  # Multimodal model that supports images
-PDFS_FOLDER = "pdfs"
+PDFS_FOLDER = "pdfs"  # Do not use compressed folder by default
+PDFS_FOLDER_FALLBACK = "pdfs_compressed"
 OUTPUT_FOLDER = "ocr_output"
 PROGRESS_FILE = "ocr_progress.json"
 
@@ -389,13 +390,21 @@ def main():
         # Load previous progress
         load_progress()
         
-        # Get list of PDF files
+        # Get list of PDF files - prefer compressed folder, fallback to original
+        pdfs_folder_to_use = PDFS_FOLDER
         if not os.path.exists(PDFS_FOLDER):
-            raise FileNotFoundError(f"PDFs folder '{PDFS_FOLDER}' not found")
+            if os.path.exists(PDFS_FOLDER_FALLBACK):
+                pdfs_folder_to_use = PDFS_FOLDER_FALLBACK
+                print(f"📁 Using original PDFs folder: {PDFS_FOLDER_FALLBACK}")
+                print(f"💡 Tip: Run 'python pdf_compressor_simple.py' first to create compressed versions")
+            else:
+                raise FileNotFoundError(f"Neither '{PDFS_FOLDER}' nor '{PDFS_FOLDER_FALLBACK}' folder found")
+        else:
+            print(f"📁 Using compressed PDFs folder: {PDFS_FOLDER}")
         
-        pdf_files = [f for f in os.listdir(PDFS_FOLDER) if f.lower().endswith('.pdf')]
+        pdf_files = [f for f in os.listdir(pdfs_folder_to_use) if f.lower().endswith('.pdf')]
         if not pdf_files:
-            print(f"No PDF files found in '{PDFS_FOLDER}' folder")
+            print(f"No PDF files found in '{pdfs_folder_to_use}' folder")
             return
         
         pdf_files.sort()  # Process in alphabetical order
@@ -404,7 +413,7 @@ def main():
         
         # Process each PDF
         for i, pdf_file in enumerate(pdf_files, 1):
-            pdf_path = os.path.join(PDFS_FOLDER, pdf_file)
+            pdf_path = os.path.join(pdfs_folder_to_use, pdf_file)
             
             print(f"\n[{i}/{len(pdf_files)}] Starting {pdf_file}")
             

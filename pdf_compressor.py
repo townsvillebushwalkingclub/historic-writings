@@ -1,230 +1,148 @@
 #!/usr/bin/env python3
 """
-PDF Compression Script
-Gently compresses PDF files over 5MB to reduce their size while maintaining quality
+Simple PDF Compression Script
+Compresses PDF files over 5MB using basic but reliable methods
 """
 
 import os
 import sys
 import shutil
+import uuid
 from pathlib import Path
 from datetime import datetime
 import fitz  # PyMuPDF
 
 # Configuration
 PDFS_FOLDER = "pdfs"
-BACKUP_FOLDER = "pdfs_backup"
+COMPRESSED_FOLDER = "pdfs_compressed"
 MAX_SIZE_MB = 5.0
 MAX_SIZE_BYTES = int(MAX_SIZE_MB * 1024 * 1024)  # 5MB in bytes
-TARGET_SIZE_BYTES = int(4.8 * 1024 * 1024)  # Target 4.8MB to stay safely under 5MB
 
 def get_file_size_mb(file_path):
     """Get file size in MB"""
     size_bytes = os.path.getsize(file_path)
     return size_bytes / (1024 * 1024), size_bytes
 
-def create_backup(source_path, backup_folder):
-    """Create a backup of the original file"""
+def get_output_path(source_path, compressed_folder):
+    """Get the output path for compressed file"""
     try:
-        os.makedirs(backup_folder, exist_ok=True)
+        os.makedirs(compressed_folder, exist_ok=True)
         filename = os.path.basename(source_path)
-        backup_path = os.path.join(backup_folder, filename)
-        
-        # Add timestamp if backup already exists
-        if os.path.exists(backup_path):
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            name, ext = os.path.splitext(filename)
-            backup_path = os.path.join(backup_folder, f"{name}_backup_{timestamp}{ext}")
-        
-        shutil.copy2(source_path, backup_path)
-        print(f"  ✓ Backup created: {backup_path}")
-        return backup_path
+        output_path = os.path.join(compressed_folder, filename)
+        return output_path
     except Exception as e:
-        print(f"  ✗ Failed to create backup: {e}")
+        print(f"  ✗ Failed to create compressed folder: {e}")
         return None
 
-def compress_pdf_gentle(input_path, output_path=None, target_size=TARGET_SIZE_BYTES):
+def compress_pdf_simple(input_path, output_path):
     """
-    Gently compress a PDF file using multiple strategies
+    Simple PDF compression using basic PyMuPDF methods
     
     Args:
         input_path (str): Path to input PDF
-        output_path (str): Path for output PDF (if None, overwrites input)
-        target_size (int): Target file size in bytes
+        output_path (str): Path for output PDF
         
     Returns:
         tuple: (success, final_size_mb, compression_ratio)
     """
-    if output_path is None:
-        output_path = input_path
-    
-    temp_path = input_path + ".temp"
+    # Create temporary output file
+    temp_path = input_path + f".temp_{uuid.uuid4().hex[:8]}"
     
     try:
-        # Open the PDF
+        print(f"    Opening PDF...")
+        # Open the PDF document
         doc = fitz.open(input_path)
+        print(f"    Pages: {len(doc)}")
         
-        print(f"    Original pages: {len(doc)}")
-        
-        # Strategy 1: Basic compression with deflate and garbage collection
-        print("    Trying gentle compression...")
+        # Method 1: Basic compression
+        print(f"    Applying basic compression...")
         doc.save(
             temp_path,
-            garbage=4,  # Aggressive garbage collection
-            deflate=True,  # Compress streams
-            clean=True,  # Clean up PDF structure
+            garbage=4,          # Remove unused objects
+            deflate=True,       # Compress streams
+            clean=True,         # Clean up structure
+            ascii=False,        # Keep binary encoding
+            expand=0,           # Don't expand images
+            linear=False,       # Don't linearize
         )
+        doc.close()
         
-        temp_size = os.path.getsize(temp_path)
-        print(f"    After basic compression: {temp_size / (1024*1024):.2f} MB")
+        basic_size = os.path.getsize(temp_path)
+        print(f"    Basic compression: {basic_size / (1024*1024):.2f} MB")
         
-        # If still too large, try more aggressive compression
-        if temp_size > target_size:
-            print("    Trying image compression...")
+        # Method 2: If still too large, try image-to-PDF conversion (aggressive)
+        if basic_size > MAX_SIZE_BYTES:
+            print(f"    Trying aggressive compression...")
             
-            # Reopen the temp file
-            doc.close()
-            doc = fitz.open(temp_path)
+            # Reopen the document
+            doc = fitz.open(input_path)
             
-            # Strategy 2: Compress images in the PDF
-            for page_num in range(len(doc)):
-                page = doc[page_num]
-                
-                # Get all images on the page
-                image_list = page.get_images()
-                
-                for img_index, img in enumerate(image_list):
-                    try:
-                        # Get image data
-                        xref = img[0]
-                        base_image = doc.extract_image(xref)
-                        image_bytes = base_image["image"]
-                        
-                        # Skip if image is already small
-                        if len(image_bytes) < 100000:  # Less than 100KB
-                            continue
-                        
-                        # Convert to PIL Image and compress
-                        from PIL import Image
-                        import io
-                        
-                        # Load image
-                        pil_image = Image.open(io.BytesIO(image_bytes))
-                        
-                        # Resize if very large
-                        max_dimension = 1200
-                        if max(pil_image.size) > max_dimension:
-                            ratio = max_dimension / max(pil_image.size)
-                            new_size = tuple(int(dim * ratio) for dim in pil_image.size)
-                            pil_image = pil_image.resize(new_size, Image.Resampling.LANCZOS)
-                        
-                        # Convert to RGB if needed
-                        if pil_image.mode in ['RGBA', 'P']:
-                            # Create white background for transparency
-                            background = Image.new('RGB', pil_image.size, (255, 255, 255))
-                            if pil_image.mode == 'RGBA':
-                                background.paste(pil_image, mask=pil_image.split()[-1])
-                            else:
-                                background.paste(pil_image)
-                            pil_image = background
-                        elif pil_image.mode != 'RGB':
-                            pil_image = pil_image.convert('RGB')
-                        
-                        # Compress as JPEG
-                        compressed_buffer = io.BytesIO()
-                        pil_image.save(compressed_buffer, format='JPEG', quality=75, optimize=True)
-                        compressed_bytes = compressed_buffer.getvalue()
-                        
-                        # Only replace if significantly smaller
-                        if len(compressed_bytes) < len(image_bytes) * 0.8:
-                            # Replace the image
-                            doc._getXrefStream(xref, compressed_bytes)
-                        
-                    except Exception as img_error:
-                        print(f"      Warning: Could not compress image {img_index} on page {page_num + 1}: {img_error}")
-                        continue
-            
-            # Save with image compression
-            doc.save(
-                temp_path,
-                garbage=4,
-                deflate=True,
-                clean=True,
-            )
-            
-            temp_size = os.path.getsize(temp_path)
-            print(f"    After image compression: {temp_size / (1024*1024):.2f} MB")
-        
-        # If still too large, try the most aggressive approach
-        if temp_size > target_size:
-            print("    Trying aggressive compression...")
-            
-            doc.close()
-            doc = fitz.open(temp_path)
-            
-            # Strategy 3: Convert pages to images and back (most aggressive)
+            # Create new document with compressed pages
             new_doc = fitz.open()
             
             for page_num in range(len(doc)):
                 page = doc[page_num]
                 
-                # Convert page to image
-                mat = fitz.Matrix(1.5, 1.5)  # Reduce resolution slightly
+                # Convert page to image with lower resolution and quality
+                mat = fitz.Matrix(1.0, 1.0)  # Standard resolution
                 pix = page.get_pixmap(matrix=mat)
                 
-                # Convert to PIL Image for additional compression
-                from PIL import Image
-                import io
+                # Get JPEG data with compression
+                img_data = pix.tobytes("jpeg", jpg_quality=60)  # Lower quality
                 
-                img_data = pix.tobytes("jpeg", jpg_quality=80)
-                pil_img = Image.open(io.BytesIO(img_data))
-                
-                # Save as compressed JPEG
-                compressed_buffer = io.BytesIO()
-                pil_img.save(compressed_buffer, format='JPEG', quality=75, optimize=True)
-                compressed_img_data = compressed_buffer.getvalue()
-                
-                # Create new page and insert image
+                # Create new page with same dimensions
                 rect = page.rect
                 new_page = new_doc.new_page(width=rect.width, height=rect.height)
-                new_page.insert_image(rect, stream=compressed_img_data)
+                
+                # Insert the compressed image
+                new_page.insert_image(rect, stream=img_data)
             
-            # Save the new document
-            new_doc.save(
-                temp_path,
-                garbage=4,
-                deflate=True,
-                clean=True,
-            )
+            # Close original and save new
+            doc.close()
+            
+            # Save to a different temp file
+            aggressive_temp = temp_path + "_aggressive"
+            new_doc.save(aggressive_temp)
             new_doc.close()
             
-            temp_size = os.path.getsize(temp_path)
-            print(f"    After aggressive compression: {temp_size / (1024*1024):.2f} MB")
-        
-        doc.close()
-        
-        # Calculate compression ratio
-        original_size = os.path.getsize(input_path)
-        final_size_mb = temp_size / (1024 * 1024)
-        compression_ratio = (original_size - temp_size) / original_size * 100
-        
-        # Move temp file to final location
-        if output_path != input_path:
-            shutil.move(temp_path, output_path)
+            aggressive_size = os.path.getsize(aggressive_temp)
+            print(f"    Aggressive compression: {aggressive_size / (1024*1024):.2f} MB")
+            
+            # Use the better result
+            if aggressive_size < basic_size:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                os.rename(aggressive_temp, temp_path)
+                final_size = aggressive_size
+                print(f"    Using aggressive compression result")
+            else:
+                if os.path.exists(aggressive_temp):
+                    os.remove(aggressive_temp)
+                final_size = basic_size
+                print(f"    Using basic compression result")
         else:
-            shutil.move(temp_path, input_path)
+            final_size = basic_size
+        
+        # Calculate results
+        original_size = os.path.getsize(input_path)
+        final_size_mb = final_size / (1024 * 1024)
+        compression_ratio = (original_size - final_size) / original_size * 100
+        
+        # Move to output location
+        shutil.move(temp_path, output_path)
         
         return True, final_size_mb, compression_ratio
         
     except Exception as e:
         print(f"    ✗ Compression failed: {e}")
         
-        # Clean up temp file
-        if os.path.exists(temp_path):
-            try:
-                os.remove(temp_path)
-            except:
-                pass
+        # Clean up temp files
+        for temp_file in [temp_path, temp_path + "_aggressive"]:
+            if os.path.exists(temp_file):
+                try:
+                    os.remove(temp_file)
+                except:
+                    pass
         
         return False, 0, 0
 
@@ -236,24 +154,37 @@ def process_pdf_file(pdf_path):
     print(f"\n📄 {filename}")
     print(f"   Current size: {size_mb:.2f} MB")
     
-    if size_bytes <= MAX_SIZE_BYTES:
-        print(f"   ✓ Size is already under {MAX_SIZE_MB} MB - skipping")
+    # Get output path for compressed file
+    output_path = get_output_path(pdf_path, COMPRESSED_FOLDER)
+    if not output_path:
+        print(f"   ✗ Failed to create output path")
+        return False
+    
+    # Check if compressed file already exists
+    if os.path.exists(output_path):
+        compressed_size_mb, _ = get_file_size_mb(output_path)
+        print(f"   ✓ Compressed version already exists: {compressed_size_mb:.2f} MB")
         return True
+    
+    if size_bytes <= MAX_SIZE_BYTES:
+        print(f"   ✓ Size is already under {MAX_SIZE_MB} MB - copying to compressed folder")
+        try:
+            shutil.copy2(pdf_path, output_path)
+            print(f"   ✓ Copied to: {output_path}")
+            return True
+        except Exception as e:
+            print(f"   ✗ Failed to copy file: {e}")
+            return False
     
     print(f"   ⚠ Size exceeds {MAX_SIZE_MB} MB - compressing...")
     
-    # Create backup
-    backup_path = create_backup(pdf_path, BACKUP_FOLDER)
-    if not backup_path:
-        print(f"   ✗ Skipping compression due to backup failure")
-        return False
-    
     # Compress the PDF
-    success, final_size_mb, compression_ratio = compress_pdf_gentle(pdf_path)
+    success, final_size_mb, compression_ratio = compress_pdf_simple(pdf_path, output_path)
     
     if success:
         print(f"   ✓ Compression successful!")
         print(f"   📉 Size reduced: {size_mb:.2f} MB → {final_size_mb:.2f} MB ({compression_ratio:.1f}% reduction)")
+        print(f"   💾 Saved to: {output_path}")
         
         if final_size_mb <= MAX_SIZE_MB:
             print(f"   🎯 Target achieved: Now under {MAX_SIZE_MB} MB")
@@ -262,20 +193,15 @@ def process_pdf_file(pdf_path):
         
         return True
     else:
-        print(f"   ✗ Compression failed - restoring from backup")
-        try:
-            shutil.copy2(backup_path, pdf_path)
-            print(f"   ✓ Original file restored")
-        except Exception as e:
-            print(f"   ✗ Failed to restore backup: {e}")
+        print(f"   ✗ Compression failed")
         return False
 
 def main():
     """Main function"""
-    print("PDF Compression Script")
+    print("Simple PDF Compression Script")
     print("=" * 50)
     print(f"Target: Compress PDFs over {MAX_SIZE_MB} MB")
-    print(f"Backup folder: {BACKUP_FOLDER}")
+    print(f"Output folder: {COMPRESSED_FOLDER}")
     print("=" * 50)
     
     # Check if PDFs folder exists
@@ -292,7 +218,7 @@ def main():
     pdf_files.sort()
     
     # Show initial analysis
-    large_files = []
+    files_to_process = []
     total_size = 0
     
     print("\n📊 File Size Analysis:")
@@ -301,38 +227,47 @@ def main():
         size_mb, size_bytes = get_file_size_mb(pdf_path)
         total_size += size_bytes
         
-        status = "⚠ NEEDS COMPRESSION" if size_bytes > MAX_SIZE_BYTES else "✓ OK"
+        # Check if compressed version already exists
+        output_path = get_output_path(pdf_path, COMPRESSED_FOLDER)
+        if output_path and os.path.exists(output_path):
+            compressed_size_mb, _ = get_file_size_mb(output_path)
+            status = f"✓ ALREADY COMPRESSED ({compressed_size_mb:.2f} MB)"
+        elif size_bytes > MAX_SIZE_BYTES:
+            status = "⚠ NEEDS COMPRESSION"
+            files_to_process.append(pdf_file)
+        else:
+            status = "📋 WILL COPY (under 5MB)"
+            files_to_process.append(pdf_file)
+            
         print(f"   {pdf_file}: {size_mb:.2f} MB - {status}")
-        
-        if size_bytes > MAX_SIZE_BYTES:
-            large_files.append(pdf_file)
     
     print(f"\nSummary:")
     print(f"   Total files: {len(pdf_files)}")
-    print(f"   Files needing compression: {len(large_files)}")
+    print(f"   Files to process: {len(files_to_process)}")
     print(f"   Total size: {total_size / (1024*1024):.2f} MB")
     
-    if not large_files:
-        print(f"\n🎉 All files are already under {MAX_SIZE_MB} MB!")
+    if not files_to_process:
+        print(f"\n🎉 All files are already processed in the compressed folder!")
         return
     
     # Ask for confirmation
-    print(f"\n⚠ IMPORTANT: Backups will be created in '{BACKUP_FOLDER}' folder")
-    response = input(f"\nProceed with compressing {len(large_files)} files? (y/n): ").strip().lower()
+    print(f"\n📁 Compressed files will be saved to '{COMPRESSED_FOLDER}' folder")
+    print(f"📁 Original files in '{PDFS_FOLDER}' will remain unchanged")
+    response = input(f"\nProceed with processing {len(files_to_process)} files? (y/n): ").strip().lower()
     
     if response != 'y':
         print("Operation cancelled by user")
         return
     
-    # Process large files
-    print(f"\n🔄 Processing {len(large_files)} files...")
+    # Process files
+    print(f"\n🔄 Processing {len(files_to_process)} files...")
     
     successful = 0
     failed = 0
     
-    for i, pdf_file in enumerate(large_files, 1):
+    for i, pdf_file in enumerate(files_to_process, 1):
         pdf_path = os.path.join(PDFS_FOLDER, pdf_file)
-        print(f"\n[{i}/{len(large_files)}] Processing...")
+        print(f"\n[{i}/{len(files_to_process)}] Processing...")
         
         if process_pdf_file(pdf_path):
             successful += 1
@@ -341,16 +276,17 @@ def main():
     
     # Final summary
     print(f"\n{'='*50}")
-    print("COMPRESSION SUMMARY")
+    print("PROCESSING SUMMARY")
     print(f"{'='*50}")
-    print(f"Successfully compressed: {successful}")
+    print(f"Successfully processed: {successful}")
     print(f"Failed: {failed}")
     
     if successful > 0:
-        print(f"\n✓ Backups saved in: {BACKUP_FOLDER}")
-        print(f"✓ You can delete backups if you're satisfied with the results")
+        print(f"\n✓ Compressed files saved in: {COMPRESSED_FOLDER}")
+        print(f"✓ Original files remain unchanged in: {PDFS_FOLDER}")
+        print(f"✓ Use the files in '{COMPRESSED_FOLDER}' for OCR processing")
     
-    print(f"\n🎉 Compression complete!")
+    print(f"\n🎉 Processing complete!")
 
 if __name__ == "__main__":
     main()
