@@ -6,12 +6,13 @@ This script converts PDF files to images and performs OCR (Optical Character Rec
 
 - ✅ Converts PDF pages to high-quality images
 - ✅ Uses Google Gemini Pro 2.5 for accurate OCR
-- ✅ Handles handwritten and printed text
+- ✅ Handles handwritten and printed typewriter text
 - ✅ Comprehensive error handling and retry logic
 - ✅ Rate limit detection and graceful stopping
 - ✅ Progress saving and resumption capabilities
 - ✅ Page-by-page processing with page breaks
 - ✅ UTF-8 encoding support for special characters
+- ✅ Converts to markdown
 
 ## Prerequisites
 
