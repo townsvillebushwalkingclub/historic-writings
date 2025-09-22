@@ -152,15 +152,15 @@ If you encounter issues:
 If your PDF files are large (over 5MB), you can use the included compression script to reduce their size before OCR processing:
 
 ```bash
-python pdf_compressor_simple.py
+python pdf_compressor.py
 ```
 
-**Note**: Use `pdf_compressor_simple.py` - this is the reliable version that works without errors.
+**Note**: Use `pdf_compressor.py` - this is the reliable version that works without errors.
 
 ### Compression Features
 
 - **Safe Processing**: Original files remain unchanged in `pdfs/` folder
-- **Compressed Output**: Creates optimized files in `compressed/` folder
+- **Compressed Output**: Creates optimized files in `pdfs_compressed/` folder
 - **Smart Processing**: Compresses files over 5MB, copies smaller files
 - **Gentle Compression**: Uses multiple strategies to reduce size while maintaining quality
 - **Progress Feedback**: Shows before/after sizes and compression ratios
@@ -171,13 +171,4 @@ python pdf_compressor_simple.py
 2. **Image Compression**: Reduces large embedded images
 3. **Aggressive Mode**: Converts pages to optimized images (last resort)
 
-The script will automatically detect which files need compression and guide you through the process. **Your original files in `pdfs/` remain untouched** - all compressed/optimized files are saved in the new `compressed/` folder.
-
-## Files Created
-
-- `compressed/` - Folder containing compressed/optimized PDF files for OCR
-- `ocr_output/` - Folder containing OCR text files
-- `ocr_progress.json` - Progress tracking file
-- Individual `*_ocr.txt` files for each PDF
-
-**Note**: The OCR script automatically uses files from the `compressed/` folder if it exists, otherwise falls back to the original `pdfs/` folder.
+The script will automatically detect which files need compression and guide you through the process. **Your original files in `pdfs/` remain untouched** - all compressed/optimized files are saved in the new `pdfs_compressed/` folder.
