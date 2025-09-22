@@ -55,9 +55,45 @@ GOOGLE_API_KEY=your_actual_api_key_here
 
 4. **Resume processing** - If the script stops due to rate limits:
 
-   - Wait for the next day (rate limits reset daily)
-   - Run the script again
-   - It will automatically resume from where it left off
+     - Wait for the next day (rate limits reset daily)
+     - Run the script again
+     - It will automatically resume from where it left off
+
+## Docker Setup (Automated)
+
+For automated processing every 12 hours, you can use Docker:
+
+### Quick Start
+
+```bash
+# 1. Set up environment
+echo "GOOGLE_API_KEY=your_api_key_here" > .env
+
+# 2. Start the service
+docker-compose up -d
+
+# 3. Monitor logs
+docker-compose logs -f pdf-ocr
+```
+
+### Docker Commands
+
+```bash
+# Start service (runs every 12 hours)
+docker-compose up -d
+
+# Run once and exit
+docker-compose run --rm pdf-ocr run
+
+# Monitor logs
+docker-compose logs -f pdf-ocr
+
+# Check status
+docker-compose ps
+
+# Stop service
+docker-compose down
+```
 
 ## Output
 

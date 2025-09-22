@@ -1,0 +1,46 @@
+services:
+    pdf-ocr:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: pdf-ocr-gemini
+        restart: unless-stopped
+        environment:
+            # Set your Google API key here or use a .env file
+            - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+            # Optional: Set timezone
+            - TZ=Australia/Brisbane
+        volumes:
+            # Mount your PDFs folder
+            - ./pdfs:/app/pdfs:ro
+            # Mount output folder for OCR results
+            - ./ocr_output:/app/ocr_output
+            # Mount logs folder
+            - ./logs:/app/logs
+            # Mount progress file to persist between container restarts
+            - ./ocr_progress.json:/app/ocr_progress.json
+            # Optional: Mount .env file if you prefer using it
+            - ./.env:/app/.env:ro
+        # Run with cron mode (every 12 hours)
+        command: ['cron']
+        # Uncomment below to run once and exit instead of cron
+        # command: ["run"]
+
+        # Health check to monitor the service
+        healthcheck:
+            test: ['CMD', 'test', '-f', '/app/logs/ocr.log']
+            interval: 1h
+            timeout: 10s
+            retries: 3
+            start_period: 30s
+
+    # Optional: Web interface to view logs (uncomment if needed)
+    # log-viewer:
+    #   image: nginx:alpine
+    #   container_name: pdf-ocr-logs
+    #   ports:
+    #     - "8080:80"
+    #   volumes:
+    #     - ./logs:/usr/share/nginx/html/logs:ro
+    #     - ./ocr_output:/usr/share/nginx/html/output:ro
+    #   restart: unless-stopped
