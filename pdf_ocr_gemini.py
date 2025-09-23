@@ -11,6 +11,7 @@ import time
 import signal
 import io
 import base64
+import random
 from pathlib import Path
 from datetime import datetime
 import fitz  # PyMuPDF
@@ -22,7 +23,29 @@ from google import genai
 load_dotenv()
 
 # Configuration
-GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+def get_random_api_key():
+    """Randomly select between GOOGLE_API_KEY_1 and GOOGLE_API_KEY_2, fallback to GOOGLE_API_KEY"""
+    api_key_1 = os.getenv('GOOGLE_API_KEY_1')
+    api_key_2 = os.getenv('GOOGLE_API_KEY_2')
+    
+    available_keys = []
+    if api_key_1:
+        available_keys.append((api_key_1, 'KEY_1'))
+    if api_key_2:
+        available_keys.append((api_key_2, 'KEY_2'))
+    
+    if not available_keys:
+        # Fallback to single GOOGLE_API_KEY
+        fallback_key = os.getenv('GOOGLE_API_KEY')
+        if fallback_key:
+            return fallback_key
+        else:
+            return None
+    
+    selected_key, key_name = random.choice(available_keys)
+    return selected_key
+
+GOOGLE_API_KEY = get_random_api_key()
 GEMINI_MODEL = "gemini-2.5-pro"  # Multimodal model that supports images
 PDFS_FOLDER = "pdfs"  # Do not use compressed folder by default
 PDFS_FOLDER_FALLBACK = "pdfs_compressed"
