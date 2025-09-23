@@ -71,8 +71,8 @@ OUTPUT_FOLDER = "ocr_output"
 PROGRESS_FILE = "ocr_progress.json"
 
 # OCR Prompt
-OCR_PROMPT = "You are a powerful OCR and handwriting expert. Please respond with all the words on this page"
-#OCR_PROMPT = "You are a powerful OCR and handwriting expert. Please respond with all the words on this page in markdown for a Ghost Pro CMS."
+#OCR_PROMPT = "You are a powerful OCR and handwriting expert. Please respond with all the words on this page"
+OCR_PROMPT = "You are a powerful OCR and handwriting expert. Please respond with all the words on this page in markdown for a Ghost Pro CMS."
 
 # Rate limiting settings
 DELAY_BETWEEN_REQUESTS = 3  # seconds
