@@ -6,7 +6,8 @@ services:
         container_name: pdf-ocr-gemini
         restart: unless-stopped
         environment:
-            # Set your Google API key here or use a .env file
+            # Set your Google API key(s) here or use a .env file
+            # Can be a single key or JSON array of keys for random selection
             - GOOGLE_API_KEY=${GOOGLE_API_KEY}
             # Optional: Set timezone
             - TZ=Australia/Brisbane

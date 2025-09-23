@@ -24,28 +24,46 @@ load_dotenv()
 
 # Configuration
 def get_random_api_key():
-    """Randomly select between GOOGLE_API_KEY_1 and GOOGLE_API_KEY_2, fallback to GOOGLE_API_KEY"""
-    api_key_1 = os.getenv('GOOGLE_API_KEY_1')
-    api_key_2 = os.getenv('GOOGLE_API_KEY_2')
+    """Randomly select from GOOGLE_API_KEY array or use single GOOGLE_API_KEY"""
+    api_key_env = os.getenv('GOOGLE_API_KEY')
     
-    available_keys = []
-    if api_key_1:
-        available_keys.append((api_key_1, 'KEY_1'))
-    if api_key_2:
-        available_keys.append((api_key_2, 'KEY_2'))
+    if not api_key_env:
+        return None
     
-    if not available_keys:
-        # Fallback to single GOOGLE_API_KEY
-        fallback_key = os.getenv('GOOGLE_API_KEY')
-        if fallback_key:
-            return fallback_key
-        else:
-            return None
+    # Check if it's a JSON array (starts with [ and ends with ])
+    if api_key_env.strip().startswith('[') and api_key_env.strip().endswith(']'):
+        try:
+            # Parse as JSON array
+            api_keys = json.loads(api_key_env)
+            if isinstance(api_keys, list) and len(api_keys) > 0:
+                # Filter out empty strings
+                valid_keys = [key for key in api_keys if key and key.strip()]
+                if valid_keys:
+                    selected_key = random.choice(valid_keys)
+                    print(f"Selected API key from array (index {api_keys.index(selected_key)})")
+                    return selected_key
+                else:
+                    print("No valid API keys found in array")
+                    return None
+            else:
+                print("Invalid array format in GOOGLE_API_KEY")
+                return None
+        except json.JSONDecodeError:
+            print("Failed to parse GOOGLE_API_KEY as JSON array, treating as single key")
+            return api_key_env
     
-    selected_key, key_name = random.choice(available_keys)
-    return selected_key
+    # Single API key
+    print("Using single API key")
+    return api_key_env
 
 GOOGLE_API_KEY = get_random_api_key()
+
+# Debug: Print API key info (first 10 chars for security)
+if GOOGLE_API_KEY:
+    print(f"API Key loaded: {GOOGLE_API_KEY[:10]}...")
+else:
+    print("No API key found!")
+
 GEMINI_MODEL = "gemini-2.5-pro"  # Multimodal model that supports images
 PDFS_FOLDER = "pdfs"  # Do not use compressed folder by default
 PDFS_FOLDER_FALLBACK = "pdfs_compressed"
@@ -215,9 +233,16 @@ def ocr_with_gemini(image, page_num, retry_count=0):
     except Exception as e:
         error_str = str(e)
         
+        # Check for invalid API key error (400)
+        if '400' in error_str and ('INVALID_ARGUMENT' in error_str or 'API_KEY_INVALID' in error_str or 'API key not valid' in error_str):
+            print(f"  ✗ Invalid API key error for page {page_num}. Stopping script.")
+            print(f"  Error: {e}")
+            return "", False, True  # Signal to stop processing
+            
         # Check for rate limit error (429)
-        if '429' in error_str or 'RESOURCE_EXHAUSTED' in error_str:
+        elif '429' in error_str or 'RESOURCE_EXHAUSTED' in error_str:
             print(f"  ⚠ Rate limit reached for page {page_num}. Stopping script.")
+            print(f"  Error: {e}")
             return "", False, True  # Signal to stop processing
             
         # Check for service unavailable (503)
@@ -228,8 +253,9 @@ def ocr_with_gemini(image, page_num, retry_count=0):
                 time.sleep(RETRY_DELAY)
                 return ocr_with_gemini(image, page_num, retry_count + 1)
             else:
-                print(f"  ✗ Max retries exceeded for page {page_num}")
-                return "", False, False
+                print(f"  ✗ Max retries exceeded for page {page_num}. Stopping script.")
+                print(f"  Error: {e}")
+                return "", False, True  # Signal to stop processing
                 
         # Check for internal server error (500)
         elif '500' in error_str or 'INTERNAL' in error_str:
@@ -239,8 +265,9 @@ def ocr_with_gemini(image, page_num, retry_count=0):
                 time.sleep(RETRY_DELAY)
                 return ocr_with_gemini(image, page_num, retry_count + 1)
             else:
-                print(f"  ✗ Max retries exceeded for page {page_num}")
-                return "", False, False
+                print(f"  ✗ Max retries exceeded for page {page_num}. Stopping script.")
+                print(f"  Error: {e}")
+                return "", False, True  # Signal to stop processing
         else:
             print(f"  ✗ Error calling Gemini API for page {page_num}: {e}")
             return "", False, False

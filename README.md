@@ -122,10 +122,11 @@ Generated on: 2024-01-15 10:30:45
 
 The script handles various error scenarios:
 
-- **Rate Limits (429)**: Stops gracefully and saves progress
-- **Service Unavailable (503)**: Retries with exponential backoff
-- **Internal Errors (500)**: Retries with exponential backoff
-- **Network Issues**: Continues with next page/file
+- **Invalid API Key (400)**: Stops immediately - check your API key
+- **Rate Limits (429)**: Stops immediately and saves progress
+- **Service Unavailable (503)**: Retries with exponential backoff, stops after max retries
+- **Internal Errors (500)**: Retries with exponential backoff, stops after max retries
+- **Other Errors**: Continues with next page/file
 - **Ctrl+C**: Saves progress before exiting
 
 ## Progress Tracking
