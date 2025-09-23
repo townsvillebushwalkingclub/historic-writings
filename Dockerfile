@@ -72,7 +72,7 @@ RUN chmod +x /app/entrypoint.sh
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV TZ=UTC
+ENV TZ=Australia/Brisbane
 
 # Expose volume mount points
 VOLUME ["/app/pdfs", "/app/ocr_output", "/app/logs"]

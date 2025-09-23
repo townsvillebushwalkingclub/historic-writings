@@ -30,12 +30,13 @@ OUTPUT_FOLDER = "ocr_output"
 PROGRESS_FILE = "ocr_progress.json"
 
 # OCR Prompt
-OCR_PROMPT = "You are a powerful OCR and handwriting expert. Please respond with all the words on this page in markdown."
+OCR_PROMPT = "You are a powerful OCR and handwriting expert. Please respond with all the words on this page"
+#OCR_PROMPT = "You are a powerful OCR and handwriting expert. Please respond with all the words on this page in markdown for a Ghost Pro CMS."
 
 # Rate limiting settings
-DELAY_BETWEEN_REQUESTS = 2  # seconds
-MAX_RETRIES = 3
-RETRY_DELAY = 5  # seconds
+DELAY_BETWEEN_REQUESTS = 3  # seconds
+MAX_RETRIES = 10
+RETRY_DELAY = 10  # seconds
 
 # Validate API key
 if not GOOGLE_API_KEY:
