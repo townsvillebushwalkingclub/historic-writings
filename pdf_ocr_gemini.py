@@ -73,7 +73,7 @@ PROGRESS_FILE = "ocr_progress.json"
 # OCR Prompt
 #OCR_PROMPT = "You are a powerful OCR and handwriting expert. Please respond with all the words on this page"
 #OCR_PROMPT = "You are a powerful OCR and handwriting expert. Please respond with all the words on this page in markdown for a Ghost Pro CMS."
-OCR_PROMPT = "You are a powerful OCR and handwriting expert. Please respond with all the words on this page in markdown for a Ghost Pro CMS. Only respond with the markdown, no other text. Please use tables when applicable. Use bold, italic, and underline when applicable. Only use heading level 3 for each section."
+OCR_PROMPT = "You are a powerful OCR and handwriting expert. Please respond with all the words on this page in markdown for a Ghost Pro CMS. Only respond with the markdown, no other additional text. Please use tables when applicable. Use bold, italic, and underline when applicable. Only use heading level 3 for each section. If another part of the text is emphasized, use bold and/or underline. Be mindful of sentences in paragraphs and do not split them up with line breaks, unless on purpose."
 
 # Rate limiting settings
 DELAY_BETWEEN_REQUESTS = 3  # seconds
@@ -184,6 +184,35 @@ def image_to_base64(image):
         print(f"Error converting image to base64: {e}")
         return None
 
+def clean_markdown_response(text):
+    """
+    Remove markdown code block delimiters from Gemini response
+    
+    Args:
+        text (str): The response text from Gemini
+        
+    Returns:
+        str: The cleaned text with markdown delimiters removed
+    """
+    if not text:
+        return text
+    
+    # Remove markdown code block delimiters
+    # Check if text starts with ```markdown and ends with ```
+    text = text.strip()
+    
+    # Remove opening ```markdown
+    if text.startswith('```markdown'):
+        text = text[11:].strip()  # Remove ```markdown (11 characters)
+    elif text.startswith('```'):
+        text = text[3:].strip()   # Remove ``` (3 characters)
+    
+    # Remove closing ```
+    if text.endswith('```'):
+        text = text[:-3].strip()  # Remove ``` (3 characters)
+    
+    return text
+
 def ocr_with_gemini(image, page_num, retry_count=0):
     """
     Perform OCR on an image using Gemini API
@@ -226,7 +255,8 @@ def ocr_with_gemini(image, page_num, retry_count=0):
         
         if response.text:
             print(f"  ✓ Successfully extracted text from page {page_num}")
-            return response.text.strip(), True, False
+            cleaned_text = clean_markdown_response(response.text)
+            return cleaned_text.strip(), True, False
         else:
             print(f"  ⚠ Empty response from Gemini for page {page_num}")
             return "", False, False
