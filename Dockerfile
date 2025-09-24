@@ -40,7 +40,7 @@ RUN echo '#!/bin/bash' > /app/entrypoint.sh && \
     echo 'run_ocr() {' >> /app/entrypoint.sh && \
     echo '    echo "$(date): Starting PDF OCR processing..." | tee -a /app/logs/ocr.log' >> /app/entrypoint.sh && \
     echo '    cd /app' >> /app/entrypoint.sh && \
-    echo '    python3 pdf_ocr_gemini.py 2>&1 | tee -a /app/logs/ocr.log' >> /app/entrypoint.sh && \
+    echo '    /usr/local/bin/python3 pdf_ocr_gemini.py 2>&1 | tee -a /app/logs/ocr.log' >> /app/entrypoint.sh && \
     echo '    exit_code=${PIPESTATUS[0]}' >> /app/entrypoint.sh && \
     echo '    if [ $exit_code -eq 0 ]; then' >> /app/entrypoint.sh && \
     echo '        echo "$(date): OCR processing completed successfully" | tee -a /app/logs/ocr.log' >> /app/entrypoint.sh && \
