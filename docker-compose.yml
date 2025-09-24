@@ -22,7 +22,7 @@ services:
             - ./ocr_progress.json:/app/ocr_progress.json
             # Optional: Mount .env file if you prefer using it
             - ./.env:/app/.env:ro
-        # Run with cron mode (every 12 hours)
+        # Run with cron mode
         command: ['cron']
         # Uncomment below to run once and exit instead of cron
         # command: ["run"]

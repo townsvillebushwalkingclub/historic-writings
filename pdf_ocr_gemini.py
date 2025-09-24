@@ -58,9 +58,9 @@ def get_random_api_key():
 
 GOOGLE_API_KEY = get_random_api_key()
 
-# Debug: Print API key info (first 10 chars for security)
+# Debug: Print API key info (first few chars for security)
 if GOOGLE_API_KEY:
-    print(f"API Key loaded: {GOOGLE_API_KEY[:10]}...")
+    print(f"API Key loaded: {GOOGLE_API_KEY[:5]}...")
 else:
     print("No API key found!")
 

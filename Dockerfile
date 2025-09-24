@@ -40,7 +40,7 @@ RUN echo '#!/bin/bash' > /app/entrypoint.sh && \
     echo 'run_ocr() {' >> /app/entrypoint.sh && \
     echo '    echo "$(date): Starting PDF OCR processing..." | tee -a /app/logs/ocr.log' >> /app/entrypoint.sh && \
     echo '    cd /app' >> /app/entrypoint.sh && \
-    echo '    python pdf_ocr_gemini.py 2>&1 | tee -a /app/logs/ocr.log' >> /app/entrypoint.sh && \
+    echo '    python3 pdf_ocr_gemini.py 2>&1 | tee -a /app/logs/ocr.log' >> /app/entrypoint.sh && \
     echo '    exit_code=${PIPESTATUS[0]}' >> /app/entrypoint.sh && \
     echo '    if [ $exit_code -eq 0 ]; then' >> /app/entrypoint.sh && \
     echo '        echo "$(date): OCR processing completed successfully" | tee -a /app/logs/ocr.log' >> /app/entrypoint.sh && \
@@ -51,9 +51,9 @@ RUN echo '#!/bin/bash' > /app/entrypoint.sh && \
     echo '' >> /app/entrypoint.sh && \
     echo '# Check if running mode is specified' >> /app/entrypoint.sh && \
     echo 'if [ "$1" = "cron" ]; then' >> /app/entrypoint.sh && \
-    echo '    echo "$(date): Setting up cron job to run every 6 hours..." | tee -a /app/logs/ocr.log' >> /app/entrypoint.sh && \
-    echo '    # Create cron job that runs every 6 hours' >> /app/entrypoint.sh && \
-    echo '    echo "0 */6 * * * /app/entrypoint.sh run >> /app/logs/cron.log 2>&1" | crontab -' >> /app/entrypoint.sh && \
+    echo '    echo "$(date): Setting up cron job to run every hour..." | tee -a /app/logs/ocr.log' >> /app/entrypoint.sh && \
+    echo '    # Create cron job that runs every hour' >> /app/entrypoint.sh && \
+    echo '    echo "0 * * * * /app/entrypoint.sh run >> /app/logs/cron.log 2>&1" | crontab -' >> /app/entrypoint.sh && \
     echo '    # Run once immediately' >> /app/entrypoint.sh && \
     echo '    run_ocr' >> /app/entrypoint.sh && \
     echo '    # Start cron daemon in foreground' >> /app/entrypoint.sh && \
