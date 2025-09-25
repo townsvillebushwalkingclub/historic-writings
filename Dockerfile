@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
     tk-dev \
     tcl-dev \
     cron \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
@@ -73,6 +74,7 @@ RUN chmod +x /app/entrypoint.sh
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV TZ=Australia/Brisbane
+ENV TZDIR=/usr/share/zoneinfo
 
 # Expose volume mount points
 VOLUME ["/app/pdfs", "/app/ocr_output", "/app/logs"]

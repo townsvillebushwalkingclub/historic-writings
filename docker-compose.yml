@@ -9,8 +9,9 @@ services:
             # Set your Google API key(s) here or use a .env file
             # Can be a single key or JSON array of keys for random selection
             - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-            # Optional: Set timezone
+            # Set timezone to AEST/AEDT (Australia/Brisbane)
             - TZ=Australia/Brisbane
+            - TZDIR=/usr/share/zoneinfo
         volumes:
             # Mount your PDFs folder
             - ./pdfs:/app/pdfs:ro
